@@ -27,9 +27,18 @@
           },
           {
             "route" : "/checkout",
+            "kind": "server",
+            "downstreamCalls" : { "frontend" : "checkoutClient" },
+            "maxLatencyMillis" : 800
+          },
+
+          {
+            "route" : "checkoutClient",
+            "kind": "client",
             "downstreamCalls" : { "checkoutservice" : "/PlaceOrder" },
             "maxLatencyMillis" : 800
           },
+
           {
             "route" : "/shipping",
             "downstreamCalls" : { "shippingservice" : "/GetQuote" },

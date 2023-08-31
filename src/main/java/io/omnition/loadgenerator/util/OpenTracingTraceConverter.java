@@ -4,6 +4,7 @@ import io.omnition.loadgenerator.model.trace.KeyValue;
 import io.omnition.loadgenerator.model.trace.Span;
 import io.opentracing.Tracer;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -38,7 +39,11 @@ public final class OpenTracingTraceConverter {
                     break;
             }
         });
-        return finalSpanBuilder.start();
+        io.opentracing.Span currentSpan = finalSpanBuilder.start();
+        Map<String,String> logMap = new HashMap<>();
+        logMap.put("event","logName");
+        logMap.put("log","this is test message");
+        return currentSpan.log(logMap);
     }
 
     private static Tracer.SpanBuilder addModelTag(KeyValue tag, Tracer.SpanBuilder otSpanBld) {

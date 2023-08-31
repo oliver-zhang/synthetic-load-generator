@@ -1,20 +1,9 @@
 package io.omnition.loadgenerator.util;
 
-import java.io.UnsupportedEncodingException;
-import java.net.URLDecoder;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
-import java.util.function.Consumer;
-
-import io.jaegertracing.reporters.Reporter;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.mutable.MutableObject;
-import org.apache.log4j.Logger;
-
 import io.jaegertracing.Tracer;
 import io.jaegertracing.Tracer.Builder;
 import io.jaegertracing.reporters.RemoteReporter;
+import io.jaegertracing.reporters.Reporter;
 import io.jaegertracing.samplers.ConstSampler;
 import io.jaegertracing.senders.HttpSender;
 import io.omnition.loadgenerator.model.trace.KeyValue;
@@ -23,6 +12,18 @@ import io.omnition.loadgenerator.model.trace.Span;
 import io.omnition.loadgenerator.model.trace.Trace;
 import io.opentracing.propagation.Format;
 import io.opentracing.propagation.TextMapInjectAdapter;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.mutable.MutableObject;
+import org.apache.log4j.Logger;
+
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
 
 public class JaegerTraceEmitter implements ITraceEmitter {
 
@@ -84,9 +85,18 @@ public class JaegerTraceEmitter implements ITraceEmitter {
         }
     }
 
+    synchronized
     private Tracer getTracer(Service service) {
-        return this.serviceNameToTracer.computeIfAbsent(service.serviceName,
-                s -> createJaegerTracer(collectorUrl, service, flushIntervalMillis));
+        Tracer tracer;
+        Lock lock = new ReentrantLock();
+        try{
+            lock.lock();
+            tracer = this.serviceNameToTracer.computeIfAbsent(service.serviceName,
+                    s -> createJaegerTracer(collectorUrl, service, flushIntervalMillis));
+        } finally {
+            lock.unlock();
+        }
+       return tracer;
     }
 
     private static Tracer createJaegerTracer(String collectorUrl, Service svc, int flushIntervalMillis) {

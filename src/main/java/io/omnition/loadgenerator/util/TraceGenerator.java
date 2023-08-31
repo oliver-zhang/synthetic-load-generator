@@ -1,25 +1,13 @@
 package io.omnition.loadgenerator.util;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Objects;
-import java.util.Random;
+import io.omnition.loadgenerator.model.topology.*;
+import io.omnition.loadgenerator.model.trace.*;
+import io.omnition.loadgenerator.model.trace.Reference.RefType;
+
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
-
-import io.omnition.loadgenerator.model.topology.ServiceRoute;
-import io.omnition.loadgenerator.model.topology.ServiceTier;
-import io.omnition.loadgenerator.model.topology.TagGenerator;
-import io.omnition.loadgenerator.model.topology.TagSet;
-import io.omnition.loadgenerator.model.topology.Topology;
-import io.omnition.loadgenerator.model.trace.KeyValue;
-import io.omnition.loadgenerator.model.trace.Reference;
-import io.omnition.loadgenerator.model.trace.Reference.RefType;
-import io.omnition.loadgenerator.model.trace.Service;
-import io.omnition.loadgenerator.model.trace.Span;
-import io.omnition.loadgenerator.model.trace.Trace;
 
 public class TraceGenerator {
     private final Random random = new Random();
@@ -53,7 +41,10 @@ public class TraceGenerator {
         span.operationName = route.route;
         span.service = service;
         span.tags.add(KeyValue.ofLongType("load_generator.seq_num", sequenceNumber.getAndIncrement()));
-
+        if (route.kind != null) {
+            span.tags.add(KeyValue.ofStringType("span.kind", route.kind));
+        }
+        span.tags.add(KeyValue.ofStringType("instanceName", instanceName));
         // Setup base tags
         span.setHttpMethodTag("GET");
         span.setHttpUrlTag("http://" + serviceTier.serviceName + routeName);

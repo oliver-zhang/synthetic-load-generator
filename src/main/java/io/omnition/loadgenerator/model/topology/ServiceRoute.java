@@ -7,6 +7,7 @@ import java.util.Map;
 
 public class ServiceRoute {
     public String route;
+    public String kind;
     public Map<String, String> downstreamCalls = new HashMap<>();
     public List<TagSet> tagSets = new ArrayList<>();
     public int maxLatencyMillis;
