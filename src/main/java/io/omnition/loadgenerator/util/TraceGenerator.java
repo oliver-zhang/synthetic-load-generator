@@ -85,6 +85,9 @@ public class TraceGenerator {
         final AtomicLong maxEndTime = new AtomicLong(startTimeMicros);
         if (span.isErrorSpan()) {
             // inject root cause error and terminate trace there
+            span.exceptionMessage = route.exceptionMessage;
+            span.exceptionStackTrace = route.exceptionStackTrace;
+            span.exceptionType = route.exceptionType;
             span.markRootCauseError();
         } else {
             // no error, make downstream calls

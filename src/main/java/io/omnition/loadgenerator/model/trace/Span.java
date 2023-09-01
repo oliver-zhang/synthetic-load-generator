@@ -1,10 +1,10 @@
 package io.omnition.loadgenerator.model.trace;
 
+import io.omnition.loadgenerator.util.SpanConventions;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-
-import io.omnition.loadgenerator.util.SpanConventions;
 
 public class Span {
     public final UUID id = UUID.randomUUID();
@@ -12,6 +12,9 @@ public class Span {
     public Long startTimeMicros;
     public Long endTimeMicros;
     public String operationName;
+    public String exceptionMessage;
+    public String exceptionStackTrace;
+    public String exceptionType;
     public List<KeyValue> tags = new ArrayList<>();
     public List<Reference> refs = new ArrayList<>();
 

@@ -40,10 +40,15 @@ public final class OpenTracingTraceConverter {
             }
         });
         io.opentracing.Span currentSpan = finalSpanBuilder.start();
-        Map<String,String> logMap = new HashMap<>();
-        logMap.put("event","logName");
-        logMap.put("log","this is test message");
-        return currentSpan.log(logMap);
+        if (span.isErrorSpan()) {
+            Map<String,String> logMap = new HashMap<>();
+            logMap.put("event","exception");
+            logMap.put("exception.message",span.exceptionMessage);
+            logMap.put("exception.stacktrace", span.exceptionStackTrace);
+            logMap.put("exception.type",span.exceptionType);
+            currentSpan.log(logMap);
+        }
+        return currentSpan ;
     }
 
     private static Tracer.SpanBuilder addModelTag(KeyValue tag, Tracer.SpanBuilder otSpanBld) {
