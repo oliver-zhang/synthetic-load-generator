@@ -4,33 +4,420 @@
       {
         "serviceName" : "frontend",
         "instances" : [ "frontend-6b654dbf57-zq8dt", "frontend-d847fdcf5-j6s2f", "frontend-79d8c8d6c8-9sbff" ],
-        "tagSets" : [
-          { "weight": 1, "tags": { "version" : "v127", "region" : "us-east-1" }},
-          { "weight": 1, "tags": { "version" : "v125", "region" : "us-east-1" }},
-          { "weight": 2, "tags": { "version" : "v125", "region" : "us-west-1" }}
-        ],
         "routes" : [
           {
             "route" : "/cart",
             "kind": "server",
             "tagSets": [
-              { "http.response.status_code": 200, "http.request.method": "POST","network.protocol.name": "http", "client.address":"192.0.2.4","client.port": 9000,
-                "url.path": "/cart","url.scheme": "http", "http.route":"/frontend/cart"}
+              { "tags": {"http.response.status_code": 200, "http.request.method": "POST","network.protocol.name": "http", "client.address":"192.0.2.4","client.port": 9000,
+                "url.path": "/cart","url.scheme": "http", "http.route":"/frontend/cart"}}
             ],
-            "downstreamCalls" : { "frontend" : ["/frontend_srv5","/frontend_srv2"] },
+            "downstreamCalls" : {"frontend": ["/frontend_srv2","/frontend_srv5"]},
             "maxLatencyMillis" : 100
+          },
+          {
+            "route" : "/checkout",
+            "kind": "server",
+            "tagSets": [
+              { "tags": {"http.response.status_code": 200, "http.request.method": "POST","network.protocol.name": "http", "client.address":"192.0.2.4","client.port": 9000,
+                "url.path": "/checkout","url.scheme": "http", "http.route":"/frontend/checkout"}}
+            ],
+            "downstreamCalls" : { "frontend" : ["/frontend_srv1","/frontend_srv2", "/frontend_srv3","/frontend_checkout_client"]},
+            "maxLatencyMillis" : 800
+          },
+          {
+            "route" : "/shipping",
+            "kind": "server",
+            "tagSets": [
+              { "tags": {"http.response.status_code": 200, "http.request.method": "POST","network.protocol.name": "http", "client.address":"192.0.2.4","client.port": 9000,
+                "url.path": "/shipping","url.scheme": "http", "http.route":"/frontend/shipping"}}
+            ],
+            "downstreamCalls" : { "frontend" : ["/frontend_srv6","/frontend_srv7","/frontend_srv8","/frontend_shipping_client"] },
+            "maxLatencyMillis" : 50
+          },
+          {
+            "route" : "/frontend_srv1",
+            "kind": "internal",
+            "downstreamCalls" : {},
+            "maxLatencyMillis" : 100,
+            "tagSets": [
+              { "tagGenerators":  [{"numTags":  20, "numVals":  3000, "valLength": 16}]}
+            ]
+          },
+          {
+            "route" : "/frontend_srv2",
+            "kind": "internal",
+            "downstreamCalls" : {"frontend": ["/frontend_srv4","/frontend_checkout_client"]},
+            "maxLatencyMillis" : 100,
+            "tagSets": [
+              { "tagGenerators":  [{"numTags":  30, "numVals":  3000, "valLength": 16}]}
+            ]
+          },
+          {
+            "route" : "/frontend_srv3",
+            "kind": "internal",
+            "downstreamCalls" : {},
+            "maxLatencyMillis" : 100,
+            "tagSets": [
+              { "tagGenerators":  [{"numTags":  10, "numVals":  3000, "valLength": 16}]}
+            ]
+          },
+          {
+            "route" : "/frontend_srv4",
+            "kind": "internal",
+            "downstreamCalls" : {},
+            "maxLatencyMillis" : 100,
+            "tagSets": [
+              { "tagGenerators":  [{"numTags":  30, "numVals":  3000, "valLength": 16}]}
+            ]
+          },
+          {
+            "route" : "/frontend_srv5",
+            "kind": "internal",
+            "downstreamCalls" : {"frontend": ["/frontend_cart_client"]},
+            "maxLatencyMillis" : 100,
+            "tagSets": [
+              { "tagGenerators":  [{"numTags":  15, "numVals":  3000, "valLength": 16}]}
+            ]
+          },
+          {
+            "route" : "/frontend_srv6",
+            "kind": "internal",
+            "downstreamCalls" : {"frontend": ["/frontend_srv1"]},
+            "maxLatencyMillis" : 100,
+            "tagSets": [
+              { "tagGenerators":  [{"numTags":  15, "numVals":  3000, "valLength": 16}]}
+            ]
+          },
+          {
+            "route" : "/frontend_srv7",
+            "kind": "internal",
+            "downstreamCalls" : {"frontend": ["/frontend_srv3"]},
+            "maxLatencyMillis" : 100,
+            "tagSets": [
+              { "tagGenerators":  [{"numTags":  15, "numVals":  3000, "valLength": 16}]}
+            ]
+          },
+          {
+            "route" : "/frontend_srv8",
+            "kind": "internal",
+            "downstreamCalls" : {"frontend": ["/frontend_quote_client"]},
+            "maxLatencyMillis" : 100,
+            "tagSets": [
+              { "tagGenerators":  [{"numTags":  15, "numVals":  3000, "valLength": 16}]}
+            ]
+          },
+          {
+            "route" : "/frontend_cart_client",
+            "kind": "client",
+            "downstreamCalls" : {"cartservice": ["/GetCart"]},
+            "maxLatencyMillis" : 1200,
+            "exceptionType": "java.net.ConnectException; OSError",
+            "exceptionMessage": "Division by zero; Can't convert 'int' object to str implicitly",
+            "exceptionStackTrace": "Exception in thread \"main\" java.lang.RuntimeException: Test exception\\n at com.example.GenerateTrace.methodB(GenerateTrace.java:13)\\n at com.example.GenerateTrace.methodA(GenerateTrace.java:9)\\n at com.example.GenerateTrace.main(GenerateTrace.java:5)",
+            "tagSets": [
+              { "weight": 1, "tags": {"rpc.system": "grpc","rpc.service": "cart.GetCartClient", "rpc.method":"GetCart", "server.address":"cart.com","rpc.grpc.status_code":"1"}},
+              { "weight": 3, "tags": {"rpc.system": "grpc","rpc.service": "cart.GetCartClient", "rpc.method":"GetCart", "server.address":"cart.com","rpc.grpc.status_code":"0"}}
+            ]
+          },
+          {
+            "route" : "/frontend_checkout_client",
+            "kind": "client",
+            "downstreamCalls" : {"checkoutservice": ["/PlaceOrder"]},
+            "maxLatencyMillis" : 800,
+            "exceptionType": "java.net.ConnectException; OSError",
+            "exceptionMessage": "Division by zero; Can't convert 'int' object to str implicitly",
+            "exceptionStackTrace": "Exception in thread \"main\" java.lang.RuntimeException: Test exception\\n at com.example.GenerateTrace.methodB(GenerateTrace.java:13)\\n at com.example.GenerateTrace.methodA(GenerateTrace.java:9)\\n at com.example.GenerateTrace.main(GenerateTrace.java:5)",
+            "tagSets": [
+              { "weight": 1, "tags": { "http.response.status_code": 500, "http.request.method": "POST","network.protocol.name": "http", "server.address":"checkout.com","server.port": 9009,
+                "url.full":"http://checkout.com/placeOrder"}},
+              { "weight": 3, "tags": {  "http.response.status_code": 200, "http.request.method": "POST","network.protocol.name": "http", "server.address":"checkout.com","server.port": 9009,
+                "url.full":"http://checkout.com/placeOrder"}}
+            ]
+          },
+          {
+            "route" : "/frontend_quote_client",
+            "kind": "client",
+            "downstreamCalls" : {"quoteservice": ["/SendQuote"]},
+            "maxLatencyMillis" : 800,
+            "exceptionType": "java.net.ConnectException; OSError",
+            "exceptionMessage": "Division by zero; Can't convert 'int' object to str implicitly",
+            "exceptionStackTrace": "Exception in thread \"main\" java.lang.RuntimeException: Test exception\\n at com.example.GenerateTrace.methodB(GenerateTrace.java:13)\\n at com.example.GenerateTrace.methodA(GenerateTrace.java:9)\\n at com.example.GenerateTrace.main(GenerateTrace.java:5)",
+            "tagSets": [
+              { "weight": 1, "tags": { "http.response.status_code": 500, "http.request.method": "POST","network.protocol.name": "http", "server.address":"quote.com","server.port": 9009,
+                "url.full":"http://quote.com/sendQuote"}},
+              { "weight": 4, "tags": {  "http.response.status_code": 200, "http.request.method": "POST","network.protocol.name": "http", "server.address":"quote.com","server.port": 9009,
+                "url.full":"http://quote.com/sendQuote"}}
+            ]
+          },
+          {
+            "route" : "/frontend_shipping_client",
+            "kind": "client",
+            "downstreamCalls" : {"shippingservice": ["/GetShipping"]},
+            "maxLatencyMillis" : 800,
+            "exceptionType": "java.net.ConnectException; OSError",
+            "exceptionMessage": "Division by zero; Can't convert 'int' object to str implicitly",
+            "exceptionStackTrace": "Exception in thread \"main\" java.lang.RuntimeException: Test exception\\n at com.example.GenerateTrace.methodB(GenerateTrace.java:13)\\n at com.example.GenerateTrace.methodA(GenerateTrace.java:9)\\n at com.example.GenerateTrace.main(GenerateTrace.java:5)",
+            "tagSets": [
+              { "weight": 1, "tags": { "http.response.status_code": 500, "http.request.method": "POST","network.protocol.name": "http", "server.address":"shipping.com","server.port": 9009,
+                "url.full":"http://shipping.com/GetShipping"}},
+              { "weight": 4, "tags": {  "http.response.status_code": 200, "http.request.method": "POST","network.protocol.name": "http", "server.address":"shipping.com","server.port": 9009,
+                "url.full":"http://shipping.com/GetShipping"}}
+            ]
           }
-
+        ]
+      },
+      {
+        "serviceName" : "cartservice",
+        "instances" : [ "cartservice-6b654dbf57-zq8dt", "cartservice-d847fdcf5-j6s2f" ],
+        "routes" : [
+          {
+            "route" : "/GetCart",
+            "kind": "server",
+            "downstreamCalls" : { "cartservice": ["cartRedisClient"]},
+            "tagSets" : [
+              {"weight": 1, "tags": {"rpc.system": "grpc","rpc.service": "cart.GetCart", "rpc.method":"GetCartImpl", "server.address":"cart.com","client.address":"frontend.com","client.port": 15211,"rpc.grpc.status_code":"1"}},
+              {"weight": 3, "tags": {"rpc.system": "grpc","rpc.service": "cart.GetCart", "rpc.method":"GetCartImpl", "server.address":"cart.com","client.address":"frontend.com","client.port": 15211,"rpc.grpc.status_code":"1"}}
+            ],
+            "maxLatencyMillis" : 200
+          },
+          {
+            "route": "cartRedisClient",
+            "kind": "client",
+            "maxLatencyMillis" : 800,
+            "tagSets": [
+              {"tags": { "db.system":"redis","db.connection_string": "http://lcoalhost:6317","db.user": "demo", "db.name":"demo","db.statement":"HMSET myhash field1 'Hello' field2 'World",
+                "db.operation":	"HMSET","db.redis.database_index": 15}}
+            ]
+          }
+        ]
+      },
+      {
+        "serviceName" : "checkoutservice",
+        "instances" : [ "checkoutservice-6b654dbf57-zq8dt", "checkoutservice-d847fdcf5-j6s2f" ],
+        "routes" : [
+          {
+            "route" : "/PlaceOrder",
+            "downstreamCalls" : {},
+            "tagSets" : [
+              {"weight": 25, "tags": { "error" : true, "http.status_code":  503}},
+              {"weight": 85, "tags":  {}}
+            ],
+            "maxLatencyMillis" : 500
+          }
+        ]
+      },
+      {
+        "serviceName" : "shippingservice",
+        "instances" : [ "shippingservice-6b654dbf57-zq8dt", "shippingservice-d847fdcf5-j6s2f" ],
+        "routes" : [
+          {
+            "route" : "/GetShipping",
+            "kind": "server",
+            "downstreamCalls" : {"shippingservice": ["/shipping_srv1","/shipping_srv2","/shipping_srv3","/shipping_mysql_client","/shipping_product_client"]},
+            "tagSets" : [
+              {"weight": 3, "tags": {"http.response.status_code": 200, "http.request.method": "POST","network.protocol.name": "http", "client.address":"http://frontend.com/getShipping",
+                                    "client.port": 9000, "url.path": "/getShipping","url.scheme": "http", "http.route":"/getShipping"}},
+              {"weight": 1, "tags": {"http.response.status_code": 500, "http.request.method": "POST","network.protocol.name": "http", "client.address":"http://frontend.com/getShipping",
+                                    "client.port": 9000, "url.path": "/getShipping","url.scheme": "http", "http.route":"/getShipping"}}
+            ],
+            "maxLatencyMillis" : 500
+          },
+          {
+            "route" : "/shipping_srv1",
+            "kind": "internal",
+            "downstreamCalls" : {"shippingservice": ["/shipping_quote_client"]},
+            "maxLatencyMillis" : 100,
+            "tagSets": [
+              { "tagGenerators":  [{"numTags":  15, "numVals":  3000, "valLength": 16}]}
+            ]
+          },
+          {
+            "route" : "/shipping_srv2",
+            "kind": "internal",
+            "downstreamCalls" : {},
+            "maxLatencyMillis" : 100,
+            "tagSets": [
+              { "tagGenerators":  [{"numTags":  15, "numVals":  3000, "valLength": 16}]}
+            ]
+          },
+          {
+            "route" : "/shipping_srv3",
+            "kind": "internal",
+            "downstreamCalls" : {},
+            "maxLatencyMillis" : 100,
+            "tagSets": [
+              { "tagGenerators":  [{"numTags":  15, "numVals":  3000, "valLength": 16}]}
+            ]
+          },
+          {
+            "route" : "/shipping_quote_client",
+            "kind": "client",
+            "downstreamCalls" : {"quoteservice": ["/GetQuote"]},
+            "maxLatencyMillis" : 100,
+            "exceptionType": "java.net.ConnectException; OSError",
+            "exceptionMessage": "Division by zero; Can't convert 'int' object to str implicitly",
+            "exceptionStackTrace": "Exception in thread \"main\" java.lang.RuntimeException: Test exception\\n at com.example.GenerateTrace.methodB(GenerateTrace.java:13)\\n at com.example.GenerateTrace.methodA(GenerateTrace.java:9)\\n at com.example.GenerateTrace.main(GenerateTrace.java:5)",
+            "tagSets": [
+              { "weight": 1, "tags": { "http.response.status_code": 500, "http.request.method": "POST","network.protocol.name": "http", "server.address":"quote.com","server.port": 9009,
+                "url.full":"http://quote.com/getQuote"}},
+              { "weight": 3, "tags": {  "http.response.status_code": 200, "http.request.method": "POST","network.protocol.name": "http", "server.address":"quote.com","server.port": 9009,
+                "url.full":"http://quote.com/getQuote"}}
+            ]
+          },
+          {
+            "route" : "/shipping_mysql_client",
+            "kind": "client",
+            "downstreamCalls" : {},
+            "maxLatencyMillis" : 100,
+            "tagSets": [
+              { "weight": 1, "tags": {"db.system":"mysql", "db.connection_string": "Server=shopdb.example.com;Database=ShippingDb;Uid=billing_user;TableCache=true;UseCompression=True;MinimumPoolSize=10;MaximumPoolSize=50;",
+                "db.user":"shipping_user","server.address":"shipping.com","server.port": 3306,"db.name": "shopdb","db.statement":"SELECT * FROM shipping WHERE order_id = 'o4711'",
+                "db.operation": "SELECT"}},
+              { "weight": 3, "tags": {"db.system":"mysql", "db.connection_string": "Server=shopdb.example.com;Database=ShippingDb;Uid=billing_user;TableCache=true;UseCompression=True;MinimumPoolSize=10;MaximumPoolSize=50;",
+                "db.user":"shipping_user","server.address":"shipping.com","server.port": 3306,"db.name": "shopdb","db.statement":"SELECT * FROM shipping WHERE order_id = 'o4711'",
+                "db.operation": "SELECT"}}
+            ]
+          },
+          {
+            "route" : "/shipping_product_client",
+            "kind": "client",
+            "downstreamCalls" : {"productservice": ["/products"]},
+            "maxLatencyMillis" : 100,
+            "tagSets": [
+              { "weight": 1, "tags": { "http.response.status_code": 500, "http.request.method": "POST","network.protocol.name": "http", "server.address":"product.com","server.port": 9009,
+                "url.full":"http://product.com/products"}},
+              { "weight": 3, "tags": {  "http.response.status_code": 200, "http.request.method": "POST","network.protocol.name": "http", "server.address":"product.com","server.port": 9009,
+                "url.full":"http://product.com/products"}}
+            ]
+          }
+        ]
+      },
+      {
+        "serviceName" : "quoteservice",
+        "instances" : [ "quoteservice-6b654dbf57-zq8dt", "quoteservice-d847fdcf5-j6s2f" ],
+        "routes" : [
+          {
+            "route" : "/SendQuote",
+            "kind": "server",
+            "downstreamCalls" : { },
+            "tagSets" : [
+              {"weight": 3, "tags": {"http.response.status_code": 200, "http.request.method": "POST","network.protocol.name": "http", "client.address":"http://quote.com/getShipping",
+                "client.port": 9000, "url.path": "/SendQuote","url.scheme": "http", "http.route":"/SendQuote"}},
+              {"weight": 1, "tags": {"http.response.status_code": 500, "http.request.method": "POST","network.protocol.name": "http", "client.address":"http://quote.com/getShipping",
+                "client.port": 9000, "url.path": "/SendQuote","url.scheme": "http", "http.route":"/SendQuote"}}
+            ],
+            "maxLatencyMillis" : 500
+          },
+          {
+            "route" : "/GetQuote",
+            "kind": "server",
+            "downstreamCalls" : { },
+            "tagSets" : [
+              {"weight": 3, "tags": {"http.response.status_code": 200, "http.request.method": "POST","network.protocol.name": "http", "client.address":"http://shipping.com/GetQuote",
+                "client.port": 9000, "url.path": "/GetQuote","url.scheme": "http", "http.route":"/GetQuote"}},
+              {"weight": 1, "tags": {"http.response.status_code": 500, "http.request.method": "POST","network.protocol.name": "http", "client.address":"http://shipping.com/GetQuote",
+                "client.port": 9000, "url.path": "/GetQuote","url.scheme": "http", "http.route":"/GetQuote"}}
+            ],
+            "maxLatencyMillis" : 500
+          }
+        ]
+      },
+      {
+        "serviceName": "productservice",
+        "instances": ["productservice-6b654dbf57-zq8dt", "productservice-d847fdcf5-j6s2f"],
+        "routes": [
+          {
+            "route" : "/products",
+            "kind": "server",
+            "downstreamCalls" : { "productservice": ["/product_srv2","/product_srv3","/product_srv4","/product_srv2"]},
+            "maxLatencyMillis" : 500,
+            "tagSets" : [
+              {"weight": 3, "tags": {"http.response.status_code": 200, "http.request.method": "POST","network.protocol.name": "http", "client.address":"http://shipping.com/products",
+                "client.port": 9000, "url.path": "/products","url.scheme": "http", "http.route":"/products"}},
+              {"weight": 1, "tags": {"http.response.status_code": 500, "http.request.method": "POST","network.protocol.name": "http", "client.address":"http://shipping.com/products",
+                "client.port": 9000, "url.path": "/products","url.scheme": "http", "http.route":"/products"}}
+            ]
+          },
+          {
+            "route" : "/product_srv1",
+            "kind": "internal",
+            "downstreamCalls" : {"productservice": ["/product_feature_client"]},
+            "maxLatencyMillis" : 100,
+            "tagSets": [
+              { "tagGenerators":  [{"numTags":  15, "numVals":  3000, "valLength": 16}]}
+            ]
+          },
+          {
+            "route" : "/product_srv2",
+            "kind": "internal",
+            "downstreamCalls" : {},
+            "maxLatencyMillis" : 100,
+            "tagSets": [
+              { "tagGenerators":  [{"numTags":  15, "numVals":  3000, "valLength": 16}]}
+            ]
+          },
+          {
+            "route" : "/product_srv3",
+            "kind": "internal",
+            "downstreamCalls" : {},
+            "maxLatencyMillis" : 100,
+            "tagSets": [
+              { "tagGenerators":  [{"numTags":  15, "numVals":  3000, "valLength": 16}]}
+            ]
+          },
+          {
+            "route" : "/product_srv4",
+            "kind": "internal",
+            "downstreamCalls" : {"productservice": ["/product_srv5","/product_srv1"]},
+            "maxLatencyMillis" : 100,
+            "tagSets": [
+              { "tagGenerators":  [{"numTags":  15, "numVals":  3000, "valLength": 16}]}
+            ]
+          },
+          {
+            "route" : "/product_srv5",
+            "kind": "internal",
+            "downstreamCalls" : {},
+            "maxLatencyMillis" : 100,
+            "tagSets": [
+              { "tagGenerators":  [{"numTags":  15, "numVals":  3000, "valLength": 16}]}
+            ]
+          },
+          {
+            "route" : "/product_feature_client",
+            "kind": "client",
+            "downstreamCalls" : {"featureflagservice": ["/featureflag"]},
+            "maxLatencyMillis" : 100,
+            "tagSets": [
+              { "weight": 1, "tags": { "http.response.status_code": 500, "http.request.method": "POST","network.protocol.name": "http", "server.address":"feature.com","server.port": 9009,
+                "url.full":"http://feature.com/featureflag"}},
+              { "weight": 3, "tags": {  "http.response.status_code": 200, "http.request.method": "POST","network.protocol.name": "http", "server.address":"feature.com","server.port": 9009,
+                "url.full":"http://feature.com/featureflag"}}
+            ]
+          }
+        ]
+      },
+      {
+        "serviceName": "featureflagservice",
+        "instances": ["featureflagservice-6b654dbf57-zq8dt", "featureflagservice-d847fdcf5-j6s2f"],
+        "routes": [
+          {
+            "route": "/featureflag",
+            "kind": "server",
+            "maxLatencyMillis" : 100,
+            "tagSets" : [
+              {"weight": 3, "tags": {"http.response.status_code": 200, "http.request.method": "POST","network.protocol.name": "http", "client.address":"http://product.com/featureflag",
+                "client.port": 9000, "url.path": "/featureflag","url.scheme": "http", "http.route":"/featureflag"}},
+              {"weight": 1, "tags": {"http.response.status_code": 500, "http.request.method": "POST","network.protocol.name": "http", "client.address":"http://product.com/featureflag",
+                "client.port": 9000, "url.path": "/featureflag","url.scheme": "http", "http.route":"/featureflag"}}
+            ]
+          }
         ]
       }
     ]
   },
   "rootRoutes" : [
-    {
-      "service" : "frontend",
-      "route" : "/product",
-      "tracesPerHour" : 2880
-    },
     {
       "service" : "frontend",
       "route" : "/cart",
@@ -40,11 +427,6 @@
       "service" : "frontend",
       "route" : "/shipping",
       "tracesPerHour" : 480
-    },
-    {
-      "service" : "frontend",
-      "route" : "/currency",
-      "tracesPerHour" : 200
     },
     {
       "service" : "frontend",

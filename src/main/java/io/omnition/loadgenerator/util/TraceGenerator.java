@@ -40,14 +40,10 @@ public class TraceGenerator {
         span.startTimeMicros = startTimeMicros;
         span.operationName = route.route;
         span.service = service;
-        span.tags.add(KeyValue.ofLongType("load_generator.seq_num", sequenceNumber.getAndIncrement()));
         if (route.kind != null) {
             span.tags.add(KeyValue.ofStringType("span.kind", route.kind));
         }
         span.tags.add(KeyValue.ofStringType("instanceName", instanceName));
-        // Setup base tags
-        span.setHttpMethodTag("GET");
-        span.setHttpUrlTag("http://" + serviceTier.serviceName + routeName);
         // Get additional tags for this route, and update with any inherited tags
         TagSet routeTags = serviceTier.getTagSet(routeName);
         HashMap<String, Object> tagsToSet = new HashMap<>(routeTags.tags);
@@ -94,17 +90,20 @@ public class TraceGenerator {
             route.downstreamCalls.forEach((s, r) -> {
                 long childStartTimeMicros = startTimeMicros + TimeUnit.MILLISECONDS.toMicros(random.nextInt(route.maxLatencyMillis));
                 ServiceTier childSvc = this.topology.getServiceTier(s);
-                Span childSpan = createSpanForServiceRouteCall(routeTags, childSvc, r, childStartTimeMicros);
-                Reference ref = new Reference(RefType.CHILD_OF, span.id, childSpan.id);
-                childSpan.refs.add(ref);
-                maxEndTime.set(Math.max(maxEndTime.get(), childSpan.endTimeMicros));
-                if (childSpan.isErrorSpan()) {
-                    Integer httpCode = childSpan.getHttpCode();
-                    if (httpCode != null) {
-                        span.setHttpCode(httpCode);
+                List<Span> childSpans = createChildSpanForServiceRouteCall(routeTags, childSvc, r, childStartTimeMicros);
+                for(Span childSpan : childSpans) {
+                    Reference ref = new Reference(RefType.CHILD_OF, span.id, childSpan.id);
+                    childSpan.refs.add(ref);
+                    maxEndTime.set(Math.max(maxEndTime.get(), childSpan.endTimeMicros));
+                    if (childSpan.isErrorSpan()) {
+                        Integer httpCode = childSpan.getHttpCode();
+                        if (httpCode != null) {
+                            span.setHttpCode(httpCode);
+                        }
+                        span.markError();
                     }
-                    span.markError();
                 }
+
             });
         }
         long ownDuration = TimeUnit.MILLISECONDS.toMicros((long)this.random.nextInt(route.maxLatencyMillis));
@@ -112,4 +111,95 @@ public class TraceGenerator {
         trace.addSpan(span);
         return span;
     }
+
+
+    private List<Span> createChildSpanForServiceRouteCall(TagSet parentTagSet, ServiceTier serviceTier, String[] routeNames, long startTimeMicros) {
+        String instanceName = serviceTier.instances.get(
+                random.nextInt(serviceTier.instances.size()));
+        List<Span> spans = new ArrayList<>();
+        for (String routeName : routeNames) {
+            ServiceRoute route = serviceTier.getRoute(routeName);
+
+            // send tags of serviceTier and serviceTier instance
+            Service service = new Service(serviceTier.serviceName, instanceName, new ArrayList<>());
+            Span span = new Span();
+            span.startTimeMicros = startTimeMicros;
+            span.operationName = route.route;
+            span.service = service;
+            span.tags.add(KeyValue.ofLongType("load_generator.seq_num", sequenceNumber.getAndIncrement()));
+            if (route.kind != null) {
+                span.tags.add(KeyValue.ofStringType("span.kind", route.kind));
+            }
+            span.tags.add(KeyValue.ofStringType("instanceName", instanceName));
+            // Get additional tags for this route, and update with any inherited tags
+            TagSet routeTags = serviceTier.getTagSet(routeName);
+            HashMap<String, Object> tagsToSet = new HashMap<>(routeTags.tags);
+            for (TagGenerator tagGenerator : routeTags.tagGenerators) {
+                tagsToSet.putAll(tagGenerator.generateTags());
+            }
+            if (parentTagSet != null && routeTags.inherit != null) {
+                for (String inheritTagKey : routeTags.inherit) {
+                    Object value = parentTagSet.tags.get(inheritTagKey);
+                    if (value != null) {
+                        tagsToSet.put(inheritTagKey, value);
+                    }
+                }
+            }
+
+            // Set the additional tags on the span
+            List<KeyValue> spanTags = tagsToSet.entrySet().stream()
+                    .map(t -> {
+                        Object val = t.getValue();
+                        if (val instanceof String) {
+                            return KeyValue.ofStringType(t.getKey(), (String) val);
+                        }
+                        if (val instanceof Double) {
+                            return KeyValue.ofLongType(t.getKey(), ((Double) val).longValue());
+                        }
+                        if (val instanceof Boolean) {
+                            return KeyValue.ofBooleanType(t.getKey(), (Boolean) val);
+                        }
+                        return null;
+                    })
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+            span.tags.addAll(spanTags);
+
+            final AtomicLong maxEndTime = new AtomicLong(startTimeMicros);
+            if (span.isErrorSpan()) {
+                // inject root cause error and terminate trace there
+                span.exceptionMessage = route.exceptionMessage;
+                span.exceptionStackTrace = route.exceptionStackTrace;
+                span.exceptionType = route.exceptionType;
+                span.markRootCauseError();
+            } else {
+                // no error, make downstream calls
+                route.downstreamCalls.forEach((s, r) -> {
+                    long childStartTimeMicros = startTimeMicros + TimeUnit.MILLISECONDS.toMicros(random.nextInt(route.maxLatencyMillis));
+                    ServiceTier childSvc = this.topology.getServiceTier(s);
+                    List<Span> childSpans = createChildSpanForServiceRouteCall(routeTags, childSvc, r, childStartTimeMicros);
+                    for (Span childSpan : childSpans) {
+                        Reference ref = new Reference(RefType.CHILD_OF, span.id, childSpan.id);
+                        childSpan.refs.add(ref);
+                        maxEndTime.set(Math.max(maxEndTime.get(), childSpan.endTimeMicros));
+                        if (childSpan.isErrorSpan()) {
+                            Integer httpCode = childSpan.getHttpCode();
+                            if (httpCode != null) {
+                                span.setHttpCode(httpCode);
+                            }
+                            span.markError();
+                        }
+                    }
+
+                });
+            }
+            long ownDuration = TimeUnit.MILLISECONDS.toMicros((long)this.random.nextInt(route.maxLatencyMillis));
+            span.endTimeMicros = maxEndTime.get() + ownDuration;
+            trace.addSpan(span);
+            spans.add(span);
+        }
+
+        return spans;
+    }
+
 }

@@ -11,7 +11,7 @@ public class ServiceRoute {
     public String exceptionStackTrace;
     public String exceptionMessage;
     public String exceptionType;
-    public Map<String, String> downstreamCalls = new HashMap<>();
+    public Map<String, String[]> downstreamCalls = new HashMap<>();
     public List<TagSet> tagSets = new ArrayList<>();
     public int maxLatencyMillis;
 }

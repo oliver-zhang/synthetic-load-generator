@@ -1,10 +1,6 @@
 package io.omnition.loadgenerator.model.topology;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Random;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -17,10 +13,16 @@ public class ServiceTier {
     private ConcurrentMap<String, TreeMap<Integer, TagSet>> mergedTagSets = new ConcurrentHashMap<>();
     private Random random = new Random();
 
-    public ServiceRoute getRoute(String routeName) {
-        return this.routes.stream()
-                .filter(r -> r.route.equalsIgnoreCase(routeName))
-                .findFirst().get();
+    public ServiceRoute getRoute(String routeName){
+        ServiceRoute route = null;
+        try{
+            route= this.routes.stream()
+                    .filter(r -> r.route.equalsIgnoreCase(routeName))
+                    .findFirst().get();
+        }catch (Exception e) {
+            System.out.println("routeName: "+routeName + "  "+e.getMessage());
+        }
+        return route;
     }
 
     public TagSet getTagSet(String routeName) {
